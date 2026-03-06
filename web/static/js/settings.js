@@ -172,6 +172,43 @@ async function loadConfig(loadTools = true) {
                 // 允许0.0值，只有undefined/null时才使用默认值
                 retrievalWeightInput.value = (hybridWeight !== undefined && hybridWeight !== null) ? hybridWeight : 0.7;
             }
+
+            // 索引配置
+            const indexing = knowledge.indexing || {};
+            const chunkSizeInput = document.getElementById('knowledge-indexing-chunk-size');
+            if (chunkSizeInput) {
+                chunkSizeInput.value = indexing.chunk_size || 512;
+            }
+
+            const chunkOverlapInput = document.getElementById('knowledge-indexing-chunk-overlap');
+            if (chunkOverlapInput) {
+                chunkOverlapInput.value = indexing.chunk_overlap ?? 50;
+            }
+
+            const maxChunksPerItemInput = document.getElementById('knowledge-indexing-max-chunks-per-item');
+            if (maxChunksPerItemInput) {
+                maxChunksPerItemInput.value = indexing.max_chunks_per_item ?? 0;
+            }
+
+            const maxRpmInput = document.getElementById('knowledge-indexing-max-rpm');
+            if (maxRpmInput) {
+                maxRpmInput.value = indexing.max_rpm ?? 0;
+            }
+
+            const rateLimitDelayInput = document.getElementById('knowledge-indexing-rate-limit-delay-ms');
+            if (rateLimitDelayInput) {
+                rateLimitDelayInput.value = indexing.rate_limit_delay_ms ?? 300;
+            }
+
+            const maxRetriesInput = document.getElementById('knowledge-indexing-max-retries');
+            if (maxRetriesInput) {
+                maxRetriesInput.value = indexing.max_retries ?? 3;
+            }
+
+            const retryDelayInput = document.getElementById('knowledge-indexing-retry-delay-ms');
+            if (retryDelayInput) {
+                retryDelayInput.value = indexing.retry_delay_ms ?? 1000;
+            }
         }
 
         // 填充机器人配置
@@ -728,6 +765,15 @@ async function applySettings() {
                     const val = parseFloat(document.getElementById('knowledge-retrieval-hybrid-weight')?.value);
                     return isNaN(val) ? 0.7 : val; // 允许0.0值，只有NaN时才使用默认值
                 })()
+            },
+            indexing: {
+                chunk_size: parseInt(document.getElementById("knowledge-indexing-chunk-size")?.value) || 512,
+                chunk_overlap: parseInt(document.getElementById("knowledge-indexing-chunk-overlap")?.value) ?? 50,
+                max_chunks_per_item: parseInt(document.getElementById("knowledge-indexing-max-chunks-per-item")?.value) ?? 0,
+                max_rpm: parseInt(document.getElementById("knowledge-indexing-max-rpm")?.value) ?? 0,
+                rate_limit_delay_ms: parseInt(document.getElementById("knowledge-indexing-rate-limit-delay-ms")?.value) ?? 300,
+                max_retries: parseInt(document.getElementById("knowledge-indexing-max-retries")?.value) ?? 3,
+                retry_delay_ms: parseInt(document.getElementById("knowledge-indexing-retry-delay-ms")?.value) ?? 1000
             }
         };
         

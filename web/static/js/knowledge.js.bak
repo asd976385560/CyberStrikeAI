@@ -459,9 +459,6 @@ async function updateIndexProgress() {
         const isComplete = status.is_complete || false;
         const lastError = status.last_error || '';
         
-        // 检查是否正在重建索引（优先使用重建状态）
-        const isRebuilding = status.is_rebuilding || false;
-        
         if (totalItems === 0) {
             // 没有知识项，隐藏进度条
             progressContainer.style.display = 'none';
@@ -524,45 +521,6 @@ async function updateIndexProgress() {
             }
             // 显示错误通知
             showNotification('索引构建失败: ' + lastError.substring(0, 100), 'error');
-            return;
-        }
-        
-
-        // 优先处理重建状态
-        if (isRebuilding) {
-            const rebuildTotal = status.rebuild_total || totalItems;
-            const rebuildCurrent = status.rebuild_current || 0;
-            const rebuildFailed = status.rebuild_failed || 0;
-            const rebuildLastItemID = status.rebuild_last_item_id || '';
-            const rebuildLastChunks = status.rebuild_last_chunks || 0;
-            const rebuildStartTime = status.rebuild_start_time || '';
-
-            // 计算进度百分比（使用重建进度）
-            let rebuildProgress = progressPercent;
-            if (rebuildTotal > 0) {
-                rebuildProgress = (rebuildCurrent / rebuildTotal) * 100;
-            }
-
-            progressContainer.innerHTML = `
-                <div class="knowledge-index-progress">
-                    <div class="progress-header">
-                        <span class="progress-icon">🔨</span>
-                        <span class="progress-text">正在重建索引：${rebuildCurrent}/${rebuildTotal} (${rebuildProgress.toFixed(1)}%) - 失败：${rebuildFailed}</span>
-                    </div>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" style="width: ${rebuildProgress}%"></div>
-                    </div>
-                    <div class="progress-hint">
-                        ${rebuildLastItemID ? `正在处理：${escapeHtml(rebuildLastItemID.substring(0, 36))}... (${rebuildLastChunks} chunks)` : '正在处理...'}
-                        ${rebuildStartTime ? `<br>开始时间：${new Date(rebuildStartTime).toLocaleString()}` : ''}
-                    </div>
-                </div>
-            `;
-
-            // 重建中时继续轮询
-            if (!indexProgressInterval) {
-                indexProgressInterval = setInterval(updateIndexProgress, 2000);
-            }
             return;
         }
         

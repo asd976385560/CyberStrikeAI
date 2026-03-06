@@ -1062,6 +1062,16 @@ func updateKnowledgeConfig(doc *yaml.Node, cfg config.KnowledgeConfig) {
 	setIntInMap(retrievalNode, "top_k", cfg.Retrieval.TopK)
 	setFloatInMap(retrievalNode, "similarity_threshold", cfg.Retrieval.SimilarityThreshold)
 	setFloatInMap(retrievalNode, "hybrid_weight", cfg.Retrieval.HybridWeight)
+
+	// 更新索引配置
+	indexingNode := ensureMap(knowledgeNode, "indexing")
+	setIntInMap(indexingNode, "chunk_size", cfg.Indexing.ChunkSize)
+	setIntInMap(indexingNode, "chunk_overlap", cfg.Indexing.ChunkOverlap)
+	setIntInMap(indexingNode, "max_chunks_per_item", cfg.Indexing.MaxChunksPerItem)
+	setIntInMap(indexingNode, "max_rpm", cfg.Indexing.MaxRPM)
+	setIntInMap(indexingNode, "rate_limit_delay_ms", cfg.Indexing.RateLimitDelayMs)
+	setIntInMap(indexingNode, "max_retries", cfg.Indexing.MaxRetries)
+	setIntInMap(indexingNode, "retry_delay_ms", cfg.Indexing.RetryDelayMs)
 }
 
 func updateRobotsConfig(doc *yaml.Node, cfg config.RobotsConfig) {

@@ -75,7 +75,7 @@ func (h *KnowledgeHandler) GetItems(c *gin.Context) {
 			groupedByCategory[cat] = append(groupedByCategory[cat], item)
 		}
 
-		// 转换为CategoryWithItems格式
+		// 转换为 CategoryWithItems 格式
 		categoriesWithItems := make([]*knowledge.CategoryWithItems, 0, len(groupedByCategory))
 		for cat, catItems := range groupedByCategory {
 			categoriesWithItems = append(categoriesWithItems, &knowledge.CategoryWithItems{
@@ -107,7 +107,7 @@ func (h *KnowledgeHandler) GetItems(c *gin.Context) {
 	categoryPageMode := c.Query("categoryPage") != "false" // 默认使用分类分页
 
 	// 分页参数
-	limit := 50 // 默认每页50条（分类分页时为分类数，项分页时为项数）
+	limit := 50 // 默认每页 50 条（分类分页时为分类数，项分页时为项数）
 	offset := 0
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if parsed, err := parseInt(limitStr); err == nil && parsed > 0 && parsed <= 500 {
@@ -120,7 +120,7 @@ func (h *KnowledgeHandler) GetItems(c *gin.Context) {
 		}
 	}
 
-	// 如果指定了category参数，且使用分类分页模式，则只返回该分类
+	// 如果指定了 category 参数，且使用分类分页模式，则只返回该分类
 	if category != "" && categoryPageMode {
 		// 单分类模式：返回该分类的所有知识项（不分页）
 		items, total, err := h.manager.GetItemsSummary(category, 0, 0)
@@ -150,9 +150,9 @@ func (h *KnowledgeHandler) GetItems(c *gin.Context) {
 
 	if categoryPageMode {
 		// 按分类分页模式（默认）
-		// limit表示每页分类数，推荐5-10个分类
+		// limit 表示每页分类数，推荐 5-10 个分类
 		if limit <= 0 || limit > 100 {
-			limit = 10 // 默认每页10个分类
+			limit = 10 // 默认每页 10 个分类
 		}
 
 		categoriesWithItems, totalCategories, err := h.manager.GetCategoriesWithItems(limit, offset)
@@ -172,7 +172,7 @@ func (h *KnowledgeHandler) GetItems(c *gin.Context) {
 	}
 
 	// 按项分页模式（向后兼容）
-	// 是否包含完整内容（默认false，只返回摘要）
+	// 是否包含完整内容（默认 false，只返回摘要）
 	includeContent := c.Query("includeContent") == "true"
 
 	if includeContent {
@@ -358,7 +358,7 @@ func (h *KnowledgeHandler) ScanKnowledgeBase(c *gin.Context) {
 					)
 				}
 
-				// 如果连续失败2次，立即停止增量索引
+				// 如果连续失败 2 次，立即停止增量索引
 				if consecutiveFailures >= 2 {
 					h.logger.Error("连续索引失败次数过多，立即停止增量索引",
 						zap.Int("consecutiveFailures", consecutiveFailures),
@@ -397,7 +397,7 @@ func (h *KnowledgeHandler) ScanKnowledgeBase(c *gin.Context) {
 func (h *KnowledgeHandler) GetRetrievalLogs(c *gin.Context) {
 	conversationID := c.Query("conversationId")
 	messageID := c.Query("messageId")
-	limit := 50 // 默认50条
+	limit := 50 // 默认 50 条
 
 	if limitStr := c.Query("limit"); limitStr != "" {
 		if parsed, err := parseInt(limitStr); err == nil && parsed > 0 {
@@ -441,10 +441,32 @@ func (h *KnowledgeHandler) GetIndexStatus(c *gin.Context) {
 	if h.indexer != nil {
 		lastError, lastErrorTime := h.indexer.GetLastError()
 		if lastError != "" {
-			// 如果错误是最近发生的（5分钟内），则返回错误信息
+			// 如果错误是最近发生的（5 分钟内），则返回错误信息
 			if time.Since(lastErrorTime) < 5*time.Minute {
 				status["last_error"] = lastError
 				status["last_error_time"] = lastErrorTime.Format(time.RFC3339)
+			}
+		}
+
+		// 获取重建索引状态
+		isRebuilding, totalItems, current, failed, lastItemID, lastChunks, startTime := h.indexer.GetRebuildStatus()
+		if isRebuilding {
+			status["is_rebuilding"] = true
+			status["rebuild_total"] = totalItems
+			status["rebuild_current"] = current
+			status["rebuild_failed"] = failed
+			status["rebuild_start_time"] = startTime.Format(time.RFC3339)
+			if lastItemID != "" {
+				status["rebuild_last_item_id"] = lastItemID
+			}
+			if lastChunks > 0 {
+				status["rebuild_last_chunks"] = lastChunks
+			}
+			// 重建中时，is_complete 为 false
+			status["is_complete"] = false
+			// 计算重建进度百分比
+			if totalItems > 0 {
+				status["progress_percent"] = float64(current) / float64(totalItems) * 100
 			}
 		}
 	}
@@ -452,7 +474,7 @@ func (h *KnowledgeHandler) GetIndexStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
-// Search 搜索知识库（用于API调用，Agent内部使用Retriever）
+// Search 搜索知识库（用于 API 调用，Agent 内部使用 Retriever）
 func (h *KnowledgeHandler) Search(c *gin.Context) {
 	var req knowledge.SearchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

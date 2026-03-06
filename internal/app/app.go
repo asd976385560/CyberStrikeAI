@@ -198,7 +198,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		knowledgeRetriever = knowledge.NewRetriever(knowledgeDB, embedder, retrievalConfig, log.Logger)
 
 		// 创建索引器
-		knowledgeIndexer = knowledge.NewIndexer(knowledgeDB, embedder, log.Logger)
+		knowledgeIndexer = knowledge.NewIndexer(knowledgeDB, embedder, log.Logger, &cfg.Knowledge.Indexing)
 
 		// 注册知识检索工具到MCP服务器
 		knowledge.RegisterKnowledgeTool(mcpServer, knowledgeRetriever, knowledgeManager, log.Logger)
@@ -1102,7 +1102,7 @@ func initializeKnowledge(
 	knowledgeRetriever := knowledge.NewRetriever(knowledgeDB, embedder, retrievalConfig, logger)
 
 	// 创建索引器
-	knowledgeIndexer := knowledge.NewIndexer(knowledgeDB, embedder, logger)
+	knowledgeIndexer := knowledge.NewIndexer(knowledgeDB, embedder, logger, &cfg.Knowledge.Indexing)
 
 	// 注册知识检索工具到MCP服务器
 	knowledge.RegisterKnowledgeTool(mcpServer, knowledgeRetriever, knowledgeManager, logger)

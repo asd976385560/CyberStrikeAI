@@ -1203,44 +1203,7 @@
                                             <small class="form-hint">向量检索的权重（0-1），1.0表示纯向量检索，0.0表示纯关键词检索</small>
                                         </div>
                                     </div>
-                                        <div class="settings-subsection-header">
-                                            <h5>索引配置</h5>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-chunk-size">分块大小（Chunk Size）</label>
-                                            <input type="number" id="knowledge-indexing-chunk-size" min="128" max="4096" placeholder="512" />
-                                            <small class="form-hint">每个块的最大 token 数（默认 512），长文本会被分割成多个块</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-chunk-overlap">分块重叠（Chunk Overlap）</label>
-                                            <input type="number" id="knowledge-indexing-chunk-overlap" min="0" max="512" placeholder="50" />
-                                            <small class="form-hint">块之间的重叠 token 数（默认 50），保持上下文连贯性</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-max-chunks-per-item">单个知识项最大块数</label>
-                                            <input type="number" id="knowledge-indexing-max-chunks-per-item" min="0" max="1000" placeholder="0" />
-                                            <small class="form-hint">单个知识项的最大块数量（0 表示不限制），防止单个文件消耗过多 API 配额</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-max-rpm">每分钟最大请求数（Max RPM）</label>
-                                            <input type="number" id="knowledge-indexing-max-rpm" min="0" max="1000" placeholder="0" />
-                                            <small class="form-hint">每分钟最大请求数（默认 0 表示不限制），如 OpenAI 默认 200 RPM</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-rate-limit-delay-ms">请求间隔延迟（毫秒）</label>
-                                            <input type="number" id="knowledge-indexing-rate-limit-delay-ms" min="0" max="10000" placeholder="300" />
-                                            <small class="form-hint">请求间隔毫秒数（默认 300），用于避免 API 速率限制，设为 0 不限制</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-max-retries">最大重试次数</label>
-                                            <input type="number" id="knowledge-indexing-max-retries" min="0" max="10" placeholder="3" />
-                                            <small class="form-hint">最大重试次数（默认 3），遇到速率限制或服务器错误时自动重试</small>
-                                        </div>
-                                        <div class="form-group">
-                                            <label for="knowledge-indexing-retry-delay-ms">重试间隔（毫秒）</label>
-                                            <input type="number" id="knowledge-indexing-retry-delay-ms" min="0" max="10000" placeholder="1000" />
-                                            <small class="form-hint">重试间隔毫秒数（默认 1000），每次重试会递增延迟</small>
-                                        </div>                                </div>
+                                </div>
 
                                 <div class="settings-actions">
                                     <button class="btn-primary" onclick="applySettings()">应用配置</button>

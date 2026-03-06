@@ -595,6 +595,26 @@ type KnowledgeConfig struct {
 	BasePath  string          `yaml:"base_path" json:"base_path"` // 知识库路径
 	Embedding EmbeddingConfig `yaml:"embedding" json:"embedding"`
 	Retrieval RetrievalConfig `yaml:"retrieval" json:"retrieval"`
+	Indexing  IndexingConfig  `yaml:"indexing,omitempty" json:"indexing,omitempty"` // 索引构建配置
+}
+
+// IndexingConfig 索引构建配置（用于控制知识库索引构建时的行为）
+type IndexingConfig struct {
+	// 分块配置
+	ChunkSize       int `yaml:"chunk_size,omitempty" json:"chunk_size,omitempty"`           // 每个块的最大 token 数（估算），默认 512
+	ChunkOverlap    int `yaml:"chunk_overlap,omitempty" json:"chunk_overlap,omitempty"`     // 块之间的重叠 token 数，默认 50
+	MaxChunksPerItem int `yaml:"max_chunks_per_item,omitempty" json:"max_chunks_per_item,omitempty"` // 单个知识项的最大块数量，0 表示不限制
+
+	// 速率限制配置（用于避免 API 速率限制）
+	RateLimitDelayMs int `yaml:"rate_limit_delay_ms,omitempty" json:"rate_limit_delay_ms,omitempty"` // 请求间隔时间（毫秒），0 表示不使用固定延迟
+	MaxRPM          int `yaml:"max_rpm,omitempty" json:"max_rpm,omitempty"`                         // 每分钟最大请求数，0 表示不限制
+
+	// 重试配置（用于处理临时错误）
+	MaxRetries     int `yaml:"max_retries,omitempty" json:"max_retries,omitempty"`       // 最大重试次数，默认 3
+	RetryDelayMs   int `yaml:"retry_delay_ms,omitempty" json:"retry_delay_ms,omitempty"` // 重试间隔（毫秒），默认 1000
+
+	// 批处理配置（用于批量嵌入，当前未使用，保留扩展）
+	BatchSize      int `yaml:"batch_size,omitempty" json:"batch_size,omitempty"`         // 批量处理大小，0 表示逐个处理
 }
 
 // EmbeddingConfig 嵌入配置
