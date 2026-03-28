@@ -96,6 +96,21 @@ function timelineAgentBracketPrefix(data) {
     return s ? ('[' + s + '] ') : '';
 }
 
+/** 主/子代理视觉区分：左边框与浅底色（与工具黄/绿状态并存时由具体项类型覆盖次要边） */
+function applyEinoTimelineRole(item, data) {
+    if (!item || !data) return;
+    const role = data.einoRole;
+    if (role === 'orchestrator' || role === 'sub') {
+        item.dataset.einoRole = role;
+        item.classList.add('timeline-eino-role-' + role);
+    }
+    const scope = data.einoScope;
+    if (scope === 'main' || scope === 'sub') {
+        item.dataset.einoScope = scope;
+        item.classList.add('timeline-eino-scope-' + scope);
+    }
+}
+
 // markdown 渲染（用于最终合并渲染；流式增量阶段用纯转义避免部分语法不稳定）
 const assistantMarkdownSanitizeConfig = {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'img', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'hr'],
@@ -710,15 +725,32 @@ function handleStreamEvent(event, progressElement, progressId,
                 }, 200);
             }
             break;
-        case 'iteration':
-            // 添加迭代标记（data 属性供语言切换时重算标题）
+        case 'iteration': {
+            const d = event.data || {};
+            const n = d.iteration != null ? d.iteration : 1;
+            let iterTitle;
+            if (d.einoScope === 'main') {
+                iterTitle = typeof window.t === 'function'
+                    ? window.t('chat.einoOrchestratorRound', { n: n })
+                    : ('主代理 · 第 ' + n + ' 轮');
+            } else if (d.einoScope === 'sub') {
+                const ag = d.einoAgent != null ? String(d.einoAgent).trim() : '';
+                iterTitle = typeof window.t === 'function'
+                    ? window.t('chat.einoSubAgentStep', { n: n, agent: ag })
+                    : ('子代理 · ' + ag + ' · 第 ' + n + ' 步');
+            } else {
+                iterTitle = typeof window.t === 'function'
+                    ? window.t('chat.iterationRound', { n: n })
+                    : ('第 ' + n + ' 轮迭代');
+            }
             addTimelineItem(timeline, 'iteration', {
-                title: typeof window.t === 'function' ? window.t('chat.iterationRound', { n: event.data?.iteration || 1 }) : '第 ' + (event.data?.iteration || 1) + ' 轮迭代',
+                title: iterTitle,
                 message: event.message,
                 data: event.data,
-                iterationN: event.data?.iteration || 1
+                iterationN: n
             });
             break;
+        }
             
         case 'thinking_stream_start': {
             const d = event.data || {};
@@ -1381,6 +1413,9 @@ function addTimelineItem(timeline, type, options) {
     if (type === 'iteration') {
         const n = options.iterationN != null ? options.iterationN : (options.data && options.data.iteration != null ? options.data.iteration : 1);
         item.dataset.iterationN = String(n);
+        if (options.data && options.data.einoScope) {
+            item.dataset.einoScope = String(options.data.einoScope);
+        }
     }
     if (type === 'progress' && options.message) {
         item.dataset.progressMessage = options.message;
@@ -1493,6 +1528,9 @@ function addTimelineItem(timeline, type, options) {
     }
     
     item.innerHTML = content;
+    if (options.data) {
+        applyEinoTimelineRole(item, options.data);
+    }
     timeline.appendChild(item);
     
     // 自动展开详情
@@ -2298,7 +2336,15 @@ function refreshProgressAndTimelineI18n() {
         const ap = (item.dataset.einoAgent && item.dataset.einoAgent !== '') ? ('[' + item.dataset.einoAgent + '] ') : '';
         if (type === 'iteration' && item.dataset.iterationN) {
             const n = parseInt(item.dataset.iterationN, 10) || 1;
-            titleSpan.textContent = ap + _t('chat.iterationRound', { n: n });
+            const scope = item.dataset.einoScope;
+            if (scope === 'main') {
+                titleSpan.textContent = _t('chat.einoOrchestratorRound', { n: n });
+            } else if (scope === 'sub') {
+                const agent = item.dataset.einoAgent || '';
+                titleSpan.textContent = _t('chat.einoSubAgentStep', { n: n, agent: agent });
+            } else {
+                titleSpan.textContent = ap + _t('chat.iterationRound', { n: n });
+            }
         } else if (type === 'thinking') {
             titleSpan.textContent = ap + '\uD83E\uDD14 ' + _t('chat.aiThinking');
         } else if (type === 'tool_calls_detected' && item.dataset.toolCallsCount != null) {

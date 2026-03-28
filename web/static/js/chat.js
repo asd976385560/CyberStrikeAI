@@ -361,7 +361,18 @@ async function sendMessage() {
         
     } catch (error) {
         removeMessage(progressId);
-        addMessage('system', '错误: ' + error.message);
+        const msg = error && error.message != null ? String(error.message) : String(error);
+        const isNetwork = /network|fetch|Failed to fetch|aborted|AbortError|load failed|NetworkError/i.test(msg);
+        if (isNetwork && typeof window.t === 'function') {
+            addMessage('system', window.t('chat.streamNetworkErrorHint', { detail: msg }));
+        } else if (isNetwork) {
+            addMessage('system', '连接已中断（' + msg + '）。长时间任务可能仍在后端执行，请查看顶部运行中任务或稍后刷新对话。');
+        } else {
+            addMessage('system', '错误: ' + msg);
+        }
+        if (typeof loadActiveTasks === 'function') {
+            loadActiveTasks();
+        }
         // 发送失败时，不恢复草稿，因为消息已经显示在对话框中了
     }
 }

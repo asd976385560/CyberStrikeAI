@@ -2871,6 +2871,24 @@ header {
     background: rgba(0, 102, 255, 0.05);
 }
 
+/* Eino 多代理：主编排器 vs 子代理时间线区分 */
+.timeline-eino-role-orchestrator {
+    border-left-color: #5c6bc0 !important;
+    background: rgba(92, 107, 192, 0.09) !important;
+}
+.timeline-eino-role-sub {
+    border-left-color: #00897b !important;
+    background: rgba(0, 137, 123, 0.08) !important;
+}
+.timeline-item-iteration.timeline-eino-scope-main {
+    border-left-color: #3949ab !important;
+    background: rgba(57, 73, 171, 0.1) !important;
+}
+.timeline-item-iteration.timeline-eino-scope-sub {
+    border-left-color: #00695c !important;
+    background: rgba(0, 105, 92, 0.09) !important;
+}
+
 .timeline-item-thinking {
     border-left-color: #9c27b0;
     background: rgba(156, 39, 176, 0.05);
