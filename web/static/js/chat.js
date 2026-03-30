@@ -1519,7 +1519,50 @@ function copyMessageToClipboard(messageDiv, button) {
     try {
         // 获取保存的原始Markdown内容
         const originalContent = messageDiv.dataset.originalContent;
-        
+
+        // 统一的复制处理函数
+        const doCopy = (text) => {
+            // 优先使用现代 Clipboard API（需要 HTTPS 或 localhost）
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                return navigator.clipboard.writeText(text).then(() => {
+                    showCopySuccess(button);
+                }).catch(err => {
+                    console.error('Clipboard API 复制失败:', err);
+                    fallbackCopy(text);
+                });
+            } else {
+                // 降级方案：使用传统的 execCommand 方法（适用于 HTTP 环境）
+                return fallbackCopy(text);
+            }
+        };
+
+        // 降级复制函数（使用 document.execCommand）
+        const fallbackCopy = (text) => {
+            try {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                textArea.style.opacity = '0';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+
+                if (successful) {
+                    showCopySuccess(button);
+                } else {
+                    throw new Error('execCommand copy failed');
+                }
+            } catch (execErr) {
+                console.error('降级复制失败:', execErr);
+                alert(typeof window.t === 'function' ? window.t('chat.copyFailedManual') : '复制失败，请手动选择内容复制');
+            }
+        };
+
         if (!originalContent) {
             // 如果没有保存原始内容，尝试从渲染后的HTML提取（降级方案）
             const bubble = messageDiv.querySelector('.message-bubble');
@@ -1536,24 +1579,14 @@ function copyMessageToClipboard(messageDiv, button) {
                 // 提取纯文本内容
                 let textContent = tempDiv.textContent || tempDiv.innerText || '';
                 textContent = textContent.replace(/\n{3,}/g, '\n\n').trim();
-                
-                navigator.clipboard.writeText(textContent).then(() => {
-                    showCopySuccess(button);
-                }).catch(err => {
-                    console.error('复制失败:', err);
-                    alert(typeof window.t === 'function' ? window.t('chat.copyFailedManual') : '复制失败，请手动选择内容复制');
-                });
+
+                doCopy(textContent);
             }
             return;
         }
         
         // 使用原始Markdown内容
-        navigator.clipboard.writeText(originalContent).then(() => {
-            showCopySuccess(button);
-        }).catch(err => {
-            console.error('复制失败:', err);
-            alert(typeof window.t === 'function' ? window.t('chat.copyFailedManual') : '复制失败，请手动选择内容复制');
-        });
+        doCopy(originalContent);
     } catch (error) {
         console.error('复制消息时出错:', error);
         alert(typeof window.t === 'function' ? window.t('chat.copyFailedManual') : '复制失败，请手动选择内容复制');
