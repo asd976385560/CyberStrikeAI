@@ -57,6 +57,15 @@ function getBatchQueueStatusPresentation(queue) {
     return { ...base, ...empty };
 }
 
+/** 队列是否处于「可改子任务列表/文案」的空闲态（与后端 batch_task_manager.queueAllowsTaskListMutationLocked 对齐） */
+function batchQueueAllowsSubtaskMutation(queue) {
+    if (!queue) return false;
+    if (queue.status === 'running') return false;
+    const hasRunningSubtask = Array.isArray(queue.tasks) && queue.tasks.some(t => t && t.status === 'running');
+    if (hasRunningSubtask) return false;
+    return queue.status === 'pending' || queue.status === 'paused' || queue.status === 'completed' || queue.status === 'cancelled';
+}
+
 // HTML转义函数（如果未定义）
 if (typeof escapeHtml === 'undefined') {
     function escapeHtml(text) {
@@ -782,6 +791,7 @@ async function showBatchImportModal() {
     const agentModeSelect = document.getElementById('batch-queue-agent-mode');
     const scheduleModeSelect = document.getElementById('batch-queue-schedule-mode');
     const cronExprInput = document.getElementById('batch-queue-cron-expr');
+    const executeNowCheckbox = document.getElementById('batch-queue-execute-now');
     if (modal && input) {
         input.value = '';
         if (titleInput) {
@@ -799,6 +809,9 @@ async function showBatchImportModal() {
         }
         if (cronExprInput) {
             cronExprInput.value = '';
+        }
+        if (executeNowCheckbox) {
+            executeNowCheckbox.checked = false;
         }
         handleBatchScheduleModeChange();
         updateBatchImportStats('');
@@ -895,6 +908,7 @@ async function createBatchQueue() {
     const agentModeSelect = document.getElementById('batch-queue-agent-mode');
     const scheduleModeSelect = document.getElementById('batch-queue-schedule-mode');
     const cronExprInput = document.getElementById('batch-queue-cron-expr');
+    const executeNowCheckbox = document.getElementById('batch-queue-execute-now');
     if (!input) return;
     
     const text = input.value.trim();
@@ -918,6 +932,7 @@ async function createBatchQueue() {
     const agentMode = agentModeSelect ? (agentModeSelect.value === 'multi' ? 'multi' : 'single') : 'single';
     const scheduleMode = scheduleModeSelect ? (scheduleModeSelect.value === 'cron' ? 'cron' : 'manual') : 'manual';
     const cronExpr = cronExprInput ? cronExprInput.value.trim() : '';
+    const executeNow = executeNowCheckbox ? !!executeNowCheckbox.checked : false;
     if (scheduleMode === 'cron' && !cronExpr) {
         alert(_t('batchImportModal.cronExprRequired'));
         return;
@@ -929,7 +944,7 @@ async function createBatchQueue() {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ title, tasks, role, agentMode, scheduleMode, cronExpr }),
+            body: JSON.stringify({ title, tasks, role, agentMode, scheduleMode, cronExpr, executeNow }),
         });
         
         if (!response.ok) {
@@ -1266,6 +1281,7 @@ async function showBatchQueueDetail(queueId) {
         const queue = result.queue;
         batchQueuesState.currentQueueId = queueId;
         const pres = getBatchQueueStatusPresentation(queue);
+        const allowSubtaskMutation = batchQueueAllowsSubtaskMutation(queue);
 
         if (title) {
             // textContent 本身会做转义；这里不要再 escapeHtml，否则会把 && 显示成 &amp;...（看起来像“变形/乱码”）
@@ -1275,7 +1291,7 @@ async function showBatchQueueDetail(queueId) {
         // 更新按钮显示
         const pauseBtn = document.getElementById('batch-queue-pause-btn');
         if (addTaskBtn) {
-            addTaskBtn.style.display = queue.status === 'pending' ? 'inline-block' : 'none';
+            addTaskBtn.style.display = allowSubtaskMutation ? 'inline-block' : 'none';
         }
         if (startBtn) {
             // pending状态显示"开始执行"，paused状态显示"继续执行"
@@ -1283,7 +1299,10 @@ async function showBatchQueueDetail(queueId) {
             if (startBtn && queue.status === 'paused') {
                 startBtn.textContent = _t('tasks.resumeExecute');
             } else if (startBtn && queue.status === 'pending') {
-                startBtn.textContent = _t('batchQueueDetailModal.startExecute');
+                const isCronPending = queue.scheduleMode === 'cron' && queue.scheduleEnabled !== false;
+                startBtn.textContent = isCronPending
+                    ? _t('batchQueueDetailModal.startExecuteNow')
+                    : _t('batchQueueDetailModal.startExecute');
             }
         }
         if (pauseBtn) {
@@ -1374,7 +1393,7 @@ async function showBatchQueueDetail(queueId) {
                 <h4>` + _t('batchQueueDetailModal.taskList') + `</h4>
                 ${queue.tasks.map((task, index) => {
                     const taskStatus = taskStatusMap[task.status] || { text: task.status, class: 'batch-task-status-unknown' };
-                    const canEdit = queue.status === 'pending' && task.status === 'pending';
+                    const canEdit = allowSubtaskMutation && task.status !== 'running';
                     const taskMessageEscaped = escapeHtml(task.message).replace(/'/g, "&#39;").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
                     return `
                         <div class="batch-task-item ${task.status === 'running' ? 'batch-task-item-active' : ''}" data-queue-id="${queue.id}" data-task-id="${task.id}" data-task-message="${taskMessageEscaped}">
@@ -1423,6 +1442,19 @@ async function startBatchQueue() {
     if (!queueId) return;
     
     try {
+        // Cron 队列点击“开始执行”会立即运行一轮，这里二次确认避免误触
+        const queueResponse = await apiFetch(`/api/batch-tasks/${queueId}`);
+        if (!queueResponse.ok) {
+            throw new Error(_t('tasks.getQueueDetailFailed'));
+        }
+        const queueResult = await queueResponse.json();
+        const queue = queueResult && queueResult.queue ? queueResult.queue : null;
+        const isCronPending = queue && queue.status === 'pending' && queue.scheduleMode === 'cron' && queue.scheduleEnabled !== false;
+        if (isCronPending) {
+            const okNow = confirm(_t('batchQueueDetailModal.startExecuteNowConfirm'));
+            if (!okNow) return;
+        }
+
         const response = await apiFetch(`/api/batch-tasks/${queueId}/start`, {
             method: 'POST',
         });
