@@ -69,6 +69,9 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 			pageSize = 100
 		}
 		offset := (page - 1) * pageSize
+		if offset > 100000 {
+			offset = 100000
+		}
 		queues, total, err := h.batchTaskManager.ListQueues(pageSize, offset, status, keyword)
 		if err != nil {
 			return batchMCPTextResult(fmt.Sprintf("列出队列失败: %v", err), true), nil
