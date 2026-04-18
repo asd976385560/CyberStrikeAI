@@ -1619,7 +1619,7 @@ type BatchTaskRequest struct {
 	Title        string   `json:"title"`                    // 任务标题（可选）
 	Tasks        []string `json:"tasks" binding:"required"` // 任务列表，每行一个任务
 	Role         string   `json:"role,omitempty"`           // 角色名称（可选，空字符串表示默认角色）
-	AgentMode    string   `json:"agentMode,omitempty"`      // single | deep | plan_execute | supervisor（旧版 multi 视为 deep）
+	AgentMode    string   `json:"agentMode,omitempty"`      // single | eino_single | deep | plan_execute | supervisor（react 同 single；旧版 multi 视为 deep）
 	ScheduleMode string   `json:"scheduleMode,omitempty"`   // manual | cron
 	CronExpr     string   `json:"cronExpr,omitempty"`       // scheduleMode=cron 时必填
 	ExecuteNow   bool     `json:"executeNow,omitempty"`     // 创建后是否立即执行（默认 false）
@@ -1630,8 +1630,11 @@ func normalizeBatchQueueAgentMode(mode string) string {
 	if m == "multi" {
 		return "deep"
 	}
-	if m == "" || m == "single" {
+	if m == "" || m == "single" || m == "react" {
 		return "single"
+	}
+	if m == "eino_single" {
+		return "eino_single"
 	}
 	switch config.NormalizeMultiAgentOrchestration(m) {
 	case "plan_execute":
@@ -2272,12 +2275,15 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 		// 使用队列配置的角色工具列表（如果为空，表示使用所有工具）
 		// 注意：skills不会硬编码注入，但会在系统提示词中提示AI这个角色推荐使用哪些skills
 		useBatchMulti := false
+		useEinoSingle := false
 		batchOrch := "deep"
 		am := strings.TrimSpace(strings.ToLower(queue.AgentMode))
 		if am == "multi" {
 			am = "deep"
 		}
-		if batchQueueWantsEino(queue.AgentMode) && h.config != nil && h.config.MultiAgent.Enabled {
+		if am == "eino_single" {
+			useEinoSingle = true
+		} else if batchQueueWantsEino(queue.AgentMode) && h.config != nil && h.config.MultiAgent.Enabled {
 			useBatchMulti = true
 			batchOrch = config.NormalizeMultiAgentOrchestration(am)
 		} else if queue.AgentMode == "" {
@@ -2287,12 +2293,20 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 				batchOrch = "deep"
 			}
 		}
+		useRunResult := useBatchMulti || useEinoSingle
 		var result *agent.AgentLoopResult
 		var resultMA *multiagent.RunResult
 		var runErr error
-		if useBatchMulti {
+		switch {
+		case useBatchMulti:
 			resultMA, runErr = multiagent.RunDeepAgent(ctx, h.config, &h.config.MultiAgent, h.agent, h.logger, conversationID, finalMessage, []agent.ChatMessage{}, roleTools, progressCallback, h.agentsMarkdownDir, batchOrch)
-		} else {
+		case useEinoSingle:
+			if h.config == nil {
+				runErr = fmt.Errorf("服务器配置未加载")
+			} else {
+				resultMA, runErr = multiagent.RunEinoSingleChatModelAgent(ctx, h.config, &h.config.MultiAgent, h.agent, h.logger, conversationID, finalMessage, []agent.ChatMessage{}, roleTools, roleSkills, progressCallback)
+			}
+		default:
 			result, runErr = h.agent.AgentLoopWithProgress(ctx, finalMessage, []agent.ChatMessage{}, conversationID, progressCallback, roleTools, roleSkills)
 		}
 		// 任务执行完成，清理取消函数
@@ -2306,10 +2320,10 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 			// 3. 检查 result.Response 中是否包含取消相关的消息
 			errStr := runErr.Error()
 			partialResp := ""
-			if result != nil {
-				partialResp = result.Response
-			} else if resultMA != nil {
+			if useRunResult && resultMA != nil {
 				partialResp = resultMA.Response
+			} else if result != nil {
+				partialResp = result.Response
 			}
 			isCancelled := errors.Is(runErr, context.Canceled) ||
 				strings.Contains(strings.ToLower(errStr), "context canceled") ||
@@ -2348,7 +2362,7 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 					if err := h.db.SaveReActData(conversationID, result.LastReActInput, result.LastReActOutput); err != nil {
 						h.logger.Warn("保存取消任务的ReAct数据失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.Error(err))
 					}
-				} else if resultMA != nil && (resultMA.LastReActInput != "" || resultMA.LastReActOutput != "") {
+				} else if useRunResult && resultMA != nil && (resultMA.LastReActInput != "" || resultMA.LastReActOutput != "") {
 					if err := h.db.SaveReActData(conversationID, resultMA.LastReActInput, resultMA.LastReActOutput); err != nil {
 						h.logger.Warn("保存取消任务的ReAct数据失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.Error(err))
 					}
@@ -2379,7 +2393,7 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 			var resText string
 			var mcpIDs []string
 			var lastIn, lastOut string
-			if useBatchMulti {
+			if useRunResult {
 				resText = resultMA.Response
 				mcpIDs = resultMA.MCPExecutionIDs
 				lastIn = resultMA.LastReActInput

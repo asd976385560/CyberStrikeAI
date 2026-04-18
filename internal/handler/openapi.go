@@ -405,8 +405,8 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						},
 						"agentMode": map[string]interface{}{
 							"type":        "string",
-							"description": "代理模式：single（ReAct）| deep | plan_execute | supervisor（Eino）；旧值 multi 按 deep",
-							"enum":        []string{"single", "deep", "plan_execute", "supervisor", "multi"},
+							"description": "代理模式：single（原生 ReAct）| eino_single（Eino ADK 单代理）| deep | plan_execute | supervisor；react 同 single；旧值 multi 按 deep",
+							"enum":        []string{"single", "eino_single", "deep", "plan_execute", "supervisor", "multi", "react"},
 						},
 						"scheduleMode": map[string]interface{}{
 							"type":        "string",

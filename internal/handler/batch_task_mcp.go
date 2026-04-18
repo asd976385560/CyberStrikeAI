@@ -132,7 +132,7 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 
 【何时用】用户明确要批量排队执行、Cron 周期跑同一批指令、或需要与任务管理页面对齐时调用。需要即时追问、强依赖当前对话上下文的分析/编码，应在本对话内直接完成，不要为了“委派”而创建队列。
 
-【参数】tasks（字符串数组）或 tasks_text（多行，每行一条）二选一；每项是一条将来由系统按队列顺序执行的指令文案。agent_mode：single（默认）或 multi（仅表示队列内每条子任务使用的执行模式，需系统已启用多代理）；非“把主对话拆给子代理”。schedule_mode：manual（默认）或 cron；cron 须填 cron_expr（5 段，如 "0 */6 * * *"）。
+【参数】tasks（字符串数组）或 tasks_text（多行，每行一条）二选一；每项是一条将来由系统按队列顺序执行的指令文案。agent_mode：single（原生 ReAct，默认）、eino_single（Eino ADK 单代理）、deep / plan_execute / supervisor（需系统启用多代理）；兼容旧值 multi（视为 deep）。非“把主对话拆给子代理”。schedule_mode：manual（默认）或 cron；cron 须填 cron_expr（5 段，如 "0 */6 * * *"）。
 
 【执行】默认创建后为 pending，不自动跑。execute_now=true 可创建后立即跑；否则之后调用 batch_task_start。Cron 自动下一轮需 schedule_enabled 为 true（可用 batch_task_schedule_enabled）。`,
 		ShortDescription: "任务管理：创建批量任务队列（登记多条指令，可选立即或 Cron）",
@@ -158,8 +158,8 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 				},
 				"agent_mode": map[string]interface{}{
 					"type":        "string",
-					"description": "队列内子任务的执行模式：single 或 multi（multi 需系统启用多代理；非子代理委派语义）",
-					"enum":        []string{"single", "multi"},
+					"description": "执行模式：single（原生 ReAct）、eino_single（Eino ADK）、deep/plan_execute/supervisor（Eino 编排，需启用多代理）；multi 兼容为 deep",
+					"enum":        []string{"single", "eino_single", "deep", "plan_execute", "supervisor", "multi"},
 				},
 				"schedule_mode": map[string]interface{}{
 					"type":        "string",
@@ -384,8 +384,8 @@ func RegisterBatchTaskMCPTools(mcpServer *mcp.Server, h *AgentHandler, logger *z
 				},
 				"agent_mode": map[string]interface{}{
 					"type":        "string",
-					"description": "代理模式：single（单代理 ReAct）或 multi（多代理）",
-					"enum":        []string{"single", "multi"},
+					"description": "代理模式：single、eino_single、deep、plan_execute、supervisor；multi 视为 deep",
+					"enum":        []string{"single", "eino_single", "deep", "plan_execute", "supervisor", "multi"},
 				},
 			},
 			"required": []string{"queue_id"},
