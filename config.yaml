@@ -69,6 +69,7 @@ multi_agent:
   # plan_execute 专用：execute↔replan 外层循环上限，0 表示 Eino 默认 10。Executor 未暴露 Handlers：patch/reduction/plantask 不作用于 PE，但 tool_search 工具列表拆分仍通过共享 ToolsConfig 作用于执行器。
   plan_execute_loop_max_iterations: 0
   sub_agent_max_iterations: 120
+  sub_agent_user_context_max_runes: 0 # 子代理指令自动注入用户原始请求的字符上限；0=默认2000，负数=禁用
   without_general_sub_agent: false # false 时保留 Deep 内置 general-purpose 子代理
   without_write_todos: false
   orchestrator_instruction: "" # Deep 主代理：agents/orchestrator.md（或 kind: orchestrator 的单个 .md）正文优先；正文为空时用此处；皆空则 Eino 默认
