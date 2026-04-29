@@ -318,6 +318,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	}
 	monitorHandler := handler.NewMonitorHandler(mcpServer, executor, db, log.Logger)
 	monitorHandler.SetExternalMCPManager(externalMCPMgr) // 设置外部MCP管理器，以便获取外部MCP执行记录
+	notificationHandler := handler.NewNotificationHandler(db, agentHandler, log.Logger)
 	groupHandler := handler.NewGroupHandler(db, log.Logger)
 	authHandler := handler.NewAuthHandler(authManager, cfg, configPath, log.Logger)
 	attackChainHandler := handler.NewAttackChainHandler(db, &cfg.OpenAI, log.Logger)
@@ -434,6 +435,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		authHandler,
 		agentHandler,
 		monitorHandler,
+		notificationHandler,
 		conversationHandler,
 		robotHandler,
 		groupHandler,
@@ -600,6 +602,7 @@ func setupRoutes(
 	authHandler *handler.AuthHandler,
 	agentHandler *handler.AgentHandler,
 	monitorHandler *handler.MonitorHandler,
+	notificationHandler *handler.NotificationHandler,
 	conversationHandler *handler.ConversationHandler,
 	robotHandler *handler.RobotHandler,
 	groupHandler *handler.GroupHandler,
@@ -728,6 +731,8 @@ func setupRoutes(
 		protected.DELETE("/monitor/execution/:id", monitorHandler.DeleteExecution)
 		protected.DELETE("/monitor/executions", monitorHandler.DeleteExecutions)
 		protected.GET("/monitor/stats", monitorHandler.GetStats)
+		protected.GET("/notifications/summary", notificationHandler.GetSummary)
+		protected.POST("/notifications/read", notificationHandler.MarkRead)
 
 		// 配置管理
 		protected.GET("/config", configHandler.GetConfig)
